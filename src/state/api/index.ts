@@ -1,7 +1,8 @@
-import { combineEpics, Epic } from 'redux-observable'
+import { ofType, combineEpics, Epic } from 'redux-observable'
 import { Actions } from '../'
 import initialState, { RootState } from '../initialState'
-import { Observable } from 'rxjs/Rx'
+import { from } from 'rxjs/observable/from'
+import { switchMap, map } from 'rxjs/operators'
 import produce from 'immer'
 import { createAction, getReturnType } from '../types'
 import request from './request'
@@ -31,17 +32,21 @@ export const makeApiRequestType = getReturnType(makeApiRequest)
 export const completeApiRequestType = getReturnType(completeApiRequest)
 
 const apiRequest: Epic<Actions, RootState> = (action$, store) =>
-  action$.ofType(INIT_API_REQUEST).switchMap(({ payload }) => {
-    return Observable.from(request({ resource: payload.id })).map(
-      ({ status, data, error }) =>
-        completeApiRequest({
-          id: payload.id,
-          status: status,
-          data: data,
-          error: error
-        })
-    )
-  })
+  action$.pipe(
+    ofType(INIT_API_REQUEST),
+    switchMap(({ payload }) => {
+      return from(request({ resource: payload.id })).pipe(
+        map(({ status, data, error }) =>
+          completeApiRequest({
+            id: payload.id,
+            status: status,
+            data: data,
+            error: error
+          })
+        )
+      )
+    })
+  )
 
 export const apiEpics = combineEpics(apiRequest)
 
